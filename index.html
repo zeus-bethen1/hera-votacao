@@ -656,8 +656,25 @@ function buildPDF(ranked){
     doc.text('VOTOS',pw/2,badgeY+58,{align:'center'});
     
     if(model._img){
-      var imgW=130;
-      var imgH=173;
+      // Calculate size maintaining aspect ratio
+      var natW=model._img.naturalWidth||model._img.width||952;
+      var natH=model._img.naturalHeight||model._img.height||1260;
+      var ratio=natW/natH;
+      
+      var maxW=160;
+      var maxH=180;
+      var imgW,imgH;
+      
+      if(ratio>maxW/maxH){
+        // Wider image - fit by width
+        imgW=maxW;
+        imgH=maxW/ratio;
+      }else{
+        // Taller image - fit by height
+        imgH=maxH;
+        imgW=maxH*ratio;
+      }
+      
       var imgX=(pw-imgW)/2;
       var imgY=badgeY+65;
       
