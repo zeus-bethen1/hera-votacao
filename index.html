@@ -560,6 +560,141 @@ function showVoter(idx){
 }
 
 function toast(m){var t=document.getElementById('tt');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2500)}
+
+/* PDF GENERATION */
+function generatePDF(){
+  toast('A gerar PDF...');
+  
+  var jsPDF=window.jspdf.jsPDF;
+  var doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var pw=210,ph=297;
+  
+  var ranked=getGlobalRanked();
+  if(ranked.length===0){toast('Sem votos para gerar PDF!');return}
+  
+  var totalModels=ranked.length;
+  var totalVotes=0;
+  for(var i=0;i<ranked.length;i++)totalVotes+=ranked[i].v;
+  
+  // Helper to load image
+  function loadImg(src){
+    return new Promise(function(resolve){
+      var img=new Image();
+      img.crossOrigin='anonymous';
+      img.onload=function(){resolve(img)};
+      img.onerror=function(){resolve(null)};
+      img.src=src;
+    });
+  }
+  
+  // Helper to draw a page
+  function drawPage(doc,model,rank,total,isFirst){
+    if(!isFirst)doc.addPage();
+    
+    // Background
+    doc.setFillColor(10,10,10);
+    doc.rect(0,0,pw,ph,'F');
+    
+    // Top accent line
+    doc.setFillColor(232,245,0);
+    doc.rect(0,0,pw,3,'F');
+    
+    // Header
+    doc.setTextColor(232,245,0);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(14);
+    doc.text('N1 HERA 2.0 — RESULTADO FINAL',pw/2,18,{align:'center'});
+    
+    doc.setTextColor(100,100,100);
+    doc.setFontSize(9);
+    doc.text(totalModels+' modelos votados  |  '+totalVotes+' votos totais  |  '+vc+' participantes',pw/2,25,{align:'center'});
+    
+    // Rank badge
+    var badgeY=38;
+    var rankStr=rank+'';
+    
+    // Badge background
+    if(rank===1){doc.setFillColor(255,215,0)}
+    else if(rank===2){doc.setFillColor(170,170,170)}
+    else if(rank===3){doc.setFillColor(205,127,50)}
+    else{doc.setFillColor(232,245,0)}
+    
+    var badgeW=rank<=3?20:16;
+    doc.roundedRect(pw/2-badgeW/2,badgeY,badgeW,12,3,3,'F');
+    doc.setTextColor(0,0,0);
+    doc.setFontSize(14);
+    doc.setFont('helvetica','bold');
+    doc.text(rankStr+'\u00B0',pw/2,badgeY+9,{align:'center'});
+    
+    // Model name
+    doc.setTextColor(240,240,240);
+    doc.setFontSize(22);
+    doc.setFont('helvetica','bold');
+    doc.text(model.name.toUpperCase(),pw/2,badgeY+28,{align:'center'});
+    
+    // Category
+    doc.setTextColor(100,100,100);
+    doc.setFontSize(11);
+    doc.setFont('helvetica','normal');
+    doc.text(model.cat.toUpperCase(),pw/2,badgeY+36,{align:'center'});
+    
+    // Votes
+    doc.setTextColor(232,245,0);
+    doc.setFontSize(32);
+    doc.setFont('helvetica','bold');
+    doc.text(model.v+'',pw/2,badgeY+52,{align:'center'});
+    doc.setTextColor(100,100,100);
+    doc.setFontSize(10);
+    doc.text('VOTOS',pw/2,badgeY+58,{align:'center'});
+    
+    // Image
+    if(model._img){
+      var imgW=120;
+      var imgH=160;
+      var imgX=(pw-imgW)/2;
+      var imgY=badgeY+65;
+      
+      // Image border
+      if(rank===1){doc.setDrawColor(255,215,0)}
+      else if(rank===2){doc.setDrawColor(170,170,170)}
+      else if(rank===3){doc.setDrawColor(205,127,50)}
+      else{doc.setDrawColor(232,245,0)}
+      doc.setLineWidth(1);
+      doc.roundedRect(imgX-2,imgY-2,imgW+4,imgH+4,4,4,'S');
+      
+      try{
+        doc.addImage(model._img,'JPEG',imgX,imgY,imgW,imgH);
+      }catch(e){console.log('img err',e)}
+    }
+    
+    // Bottom line
+    doc.setFillColor(232,245,0);
+    doc.rect(0,ph-3,pw,3,'F');
+    
+    // Footer
+    doc.setTextColor(60,60,60);
+    doc.setFontSize(8);
+    doc.text('BE THE N1  |  HERA 2.0 COLLECTION  |  P\u00e1gina '+(rank)+' de '+ranked.length,pw/2,ph-6,{align:'center'});
+  }
+  
+  // Load all images then generate
+  var promises=[];
+  for(var i=0;i<ranked.length;i++){
+    promises.push(loadImg(ranked[i].img));
+  }
+  
+  Promise.all(promises).then(function(images){
+    for(var i=0;i<ranked.length;i++){
+      ranked[i]._img=images[i];
+      drawPage(doc,ranked[i],i+1,ranked.length,i===0);
+    }
+    doc.save('HERA_2.0_Ranking_Final.pdf');
+    toast('PDF gerado com sucesso!');
+  }).catch(function(e){
+    console.error('PDF error:',e);
+    toast('Erro ao gerar PDF');
+  });
+}
 </script>
 </body>
 </html>
